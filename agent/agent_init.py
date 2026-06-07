@@ -252,6 +252,9 @@ def init_agent(
     _install_safe_stdio()
 
     agent.model = model
+    # Validate max_iterations to prevent negative values
+    if max_iterations < 0:
+        max_iterations = 90  # Reset to default if negative
     agent.max_iterations = max_iterations
     # Shared iteration budget — parent creates, children inherit.
     # Consumed by every LLM turn across parent + all subagents.
