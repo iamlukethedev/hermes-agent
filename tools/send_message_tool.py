@@ -200,6 +200,16 @@ def _handle_send(args):
                 "error": f"Could not resolve '{target_ref}' on {platform_name}. "
                 f"Try using a numeric channel ID instead."
             })
+    elif target_ref and not chat_id:
+        # _parse_target_ref returned (None, None, False) — the target_ref was not recognized
+        # and will silently fall back to home channel. Log this for debugging.
+        logger.warning(
+            "Target reference '%s' on platform '%s' was not recognized by _parse_target_ref "
+            "and will silently fall back to home channel. This may indicate a malformed JID "
+            "or unsupported target format.",
+            target_ref,
+            platform_name,
+        )
 
     from tools.interrupt import is_interrupted
     if is_interrupted():
@@ -383,6 +393,22 @@ def _parse_target_ref(platform_name: str, target_ref: str):
         if target_ref.strip().isdigit():
             return f"group:{target_ref.strip()}", None, True
         return None, None, False
+    # WhatsApp-specific parsing: handle both suffixed JIDs and bare digit formats.
+    # Suffixed JIDs: <digits>@g.us (group), <digits>@s.whatsapp.net (DM full form), <digits>@lid (LID)
+    if platform_name == "whatsapp":
+        candidate = target_ref.strip()
+        # Check for suffixed JIDs
+        if re.fullmatch(r"\d+@(g\.us|s\.whatsapp\.net|lid)", candidate):
+            return candidate, None, True
+        # Bare digits — auto-classify by length.
+        # 17+ digits → group ID, 7-15 digits → phone number (E.164 max is 15).
+        # 16 is ambiguous; let the fallback all-digits branch handle it.
+        if candidate.lstrip("+").isdigit():
+            bare = candidate.lstrip("+")
+            if len(bare) >= 17:
+                return f"{bare}@g.us", None, True
+            if 7 <= len(bare) <= 15:
+                return f"{bare}@s.whatsapp.net", None, True
     if platform_name in _PHONE_PLATFORMS:
         match = _E164_TARGET_RE.fullmatch(target_ref)
         if match:

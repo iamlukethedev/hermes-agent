@@ -1152,8 +1152,10 @@ class TestParseTargetRefE164:
         assert is_explicit is True
 
     def test_whatsapp_e164_is_explicit(self):
+        """WhatsApp E.164 numbers are auto-converted to @s.whatsapp.net JID format.
+        This is the proper format that the Baileys bridge expects."""
         chat_id, _, is_explicit = _parse_target_ref("whatsapp", "+15551234567")
-        assert chat_id == "+15551234567"
+        assert chat_id == "15551234567@s.whatsapp.net"
         assert is_explicit is True
 
     def test_signal_bare_digits_still_work(self):
