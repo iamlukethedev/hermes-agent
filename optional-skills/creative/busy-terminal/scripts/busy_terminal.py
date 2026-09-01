@@ -1238,26 +1238,36 @@ def window_argv(
     command: str,
     platform: str,
     which: Callable[[str], str | None] = shutil.which,
+    fullscreen: bool = False,
 ) -> list[str]:
-    """Build the argv that runs `command` in a NEW visible terminal window.
+    """Build argv that runs `command` in a new visible terminal window.
 
     Takes the platform as data rather than reading `sys.platform`, so all three
-    branches are checkable from one host.
+    branches are checkable from one host. Full-screen activation is supported
+    by macOS Terminal.app; other platforms retain their normal window behavior.
     """
     if platform == "darwin":
         # Size the new window for the war room (panes + four dialogs). A
         # default 80x24 Terminal clips the corners and looks like one pane.
         quoted = applescript_string(command)
-        return [
-            "osascript",
-            "-e",
+        script = (
             "tell application \"Terminal\"\n"
             f"  set w to do script {quoted}\n"
             "  set number of columns of front window to 140\n"
             "  set number of rows of front window to 42\n"
             "  activate\n"
-            "end tell",
-        ]
+            "end tell\n"
+        )
+        if fullscreen:
+            # Terminal's full-screen command is a system shortcut rather than
+            # a Terminal dictionary property. Accessibility permission may be
+            # required for System Events to send it.
+            script += (
+                "delay 0.2\n"
+                "tell application \"System Events\" to keystroke \"f\" "
+                "using {control down, command down}\n"
+            )
+        return ["osascript", "-e", script]
 
     if platform == "win32":
         return ["cmd", "/c", "start", "", "cmd", "/k", command]
@@ -1279,7 +1289,7 @@ def relaunch_command(argv: Sequence[str], script: str = "", python: str = "") ->
     parts = [
         python or sys.executable,
         script or str(Path(__file__).resolve()),
-        *[arg for arg in argv if arg != "--window"],
+        *[arg for arg in argv if arg not in {"--window", "--fullscreen"}],
     ]
 
     return " ".join(shlex.quote(part) for part in parts)
@@ -1291,9 +1301,10 @@ def open_in_window(
     platform: str = sys.platform,
     spawn: Callable[..., object] = subprocess.Popen,
     which: Callable[[str], str | None] = shutil.which,
+    fullscreen: bool = False,
 ) -> int:
     """Start the screensaver in its own window and return immediately."""
-    command = window_argv(relaunch_command(argv), platform, which)
+    command = window_argv(relaunch_command(argv), platform, which, fullscreen=fullscreen)
     spawn(command)
 
     return 0
@@ -1352,6 +1363,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--window", action="store_true",
         help="Open a new terminal window running this, then exit. Use this from an agent.",
     )
+    parser.add_argument(
+        "--fullscreen", action="store_true",
+        help="Request full-screen mode when --window launches Terminal.app on macOS.",
+    )
 
     return parser
 
@@ -1361,7 +1376,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(raw)
 
     if args.window:
-        return open_in_window(raw)
+        return open_in_window(raw, fullscreen=args.fullscreen)
 
     _enable_windows_ansi()
 
