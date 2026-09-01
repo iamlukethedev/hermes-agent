@@ -584,6 +584,14 @@ class TestWindowArgv:
         assert "activate" in script
         assert "number of columns of front window to 140" in script
         assert "number of rows of front window to 42" in script
+        assert "System Events" not in script
+
+    def test_macos_fullscreen_requests_the_system_shortcut(self):
+        argv = busy_terminal.window_argv("run me", "darwin", fullscreen=True)
+        script = " ".join(argv)
+        assert "System Events" in script
+        assert 'keystroke "f"' in script
+        assert "control down, command down" in script
 
     def test_macos_embeds_the_command_as_an_escaped_applescript_literal(self):
         argv = busy_terminal.window_argv('say "hi"', "darwin")
@@ -616,9 +624,10 @@ class TestWindowArgv:
 class TestRelaunchCommand:
     def test_drops_the_window_flag_so_the_child_actually_animates(self):
         command = busy_terminal.relaunch_command(
-            ["--window", "--duration", "60"], script="/s/busy.py", python="/py"
+            ["--window", "--fullscreen", "--duration", "60"], script="/s/busy.py", python="/py"
         )
         assert "--window" not in command
+        assert "--fullscreen" not in command
         assert command == "/py /s/busy.py --duration 60"
 
     def test_quotes_paths_with_spaces(self):
@@ -643,6 +652,19 @@ class TestOpenInWindow:
         assert code == 0
         assert len(spawned) == 1
         assert spawned[0][0] == "osascript"
+
+    def test_spawns_fullscreen_when_requested(self):
+        spawned: list[list[str]] = []
+        code = busy_terminal.open_in_window(
+            ["--window", "--fullscreen", "--duration", "30"],
+            platform="darwin",
+            spawn=lambda argv: spawned.append(argv),
+            fullscreen=True,
+        )
+        script = " ".join(spawned[0])
+        assert code == 0
+        assert "System Events" in script
+        assert "control down, command down" in script
 
     def test_the_command_it_hands_off_still_carries_the_options(self):
         spawned: list[list[str]] = []

@@ -52,17 +52,18 @@ redirected degrades to plain text automatically, as does setting `NO_COLOR`.
 
 ## How to Run
 
-Always pass `--window`. Run it through the `terminal` tool:
+Always pass `--window`. On macOS, add `--fullscreen` when the user wants the new window to take over the display. Run it through the `terminal` tool:
 
 ```bash
 python3 ~/.hermes/skills/creative/busy-terminal/scripts/busy_terminal.py \
-  --window --profile hacker --duration 600
+  --window --fullscreen --profile developer --duration 600
 ```
 
-`--window` opens a fresh terminal window on the user's screen, then returns
-immediately. Without it the animation writes into the agent's captured pipe,
-where there is no TTY to animate and — at the default unbounded duration — the
-turn never ends.
+`--window` opens a fresh terminal window on the user's screen, activates it,
+then returns immediately. `--fullscreen` additionally requests macOS Terminal's
+full-screen shortcut after the window is ready. Without `--window` the animation
+writes into the agent's captured pipe, where there is no TTY to animate and — at
+the default unbounded duration — the turn never ends.
 
 Pick a `--duration` so the window cannot outlive the user's attention. Ten
 minutes is a good default; they can Ctrl-C sooner.
@@ -88,6 +89,7 @@ The user can also run it themselves in any terminal, without `--window`.
 | `--seed` | random | Reproducible run |
 | `--no-color` | off | Plain text, no ANSI escapes |
 | `--window` | off | Open a new terminal window and return — use this from an agent |
+| `--fullscreen` | off | Request full-screen mode after `--window` on macOS Terminal.app |
 
 | Scene | Profile | What it shows |
 |-------|---------|---------------|
@@ -105,11 +107,14 @@ The user can also run it themselves in any terminal, without `--window`.
 1. Pick the profile from the user's phrasing (see When to Use); default to
    `hacker` when it is ambiguous. Always pass `--profile` on the command
    line — do not omit it.
-2. Run the script with `--window`, the profile, and a `--duration` via
-   `terminal`. The war room opens first on the hacker rotation.
-3. Tell the user a new window opened and that Ctrl-C in it stops the show.
-4. Suggest full screen and a larger font if they want it to fill the display —
-   the matrix rain especially earns it.
+2. Run the script with `--window`, `--fullscreen` on macOS when requested, the
+   profile, and a `--duration` via `terminal`. The war room opens first on the
+   hacker rotation.
+3. Tell the user a new window opened and that Ctrl-C in it stops the show. When
+   full-screen mode was requested, mention that macOS Accessibility permission
+   for System Events may be needed for the shortcut.
+4. Suggest a larger font if they want it to fill the display — the matrix rain
+   especially earns it.
 
 Scenes never repeat back to back; `next_scene` excludes the one that just
 played, so the cycle reads as varied rather than random-looking.
@@ -118,6 +123,10 @@ played, so the cycle reads as varied rather than random-looking.
 
 - **Forgetting `--window` hangs the turn.** The default duration is unbounded,
   so a captured run never returns and the user sees nothing.
+- **Full-screen mode may need permission.** On macOS, `--fullscreen` sends
+  Control-Command-F through System Events after activating Terminal.app. If
+  Accessibility permission is unavailable, the window still opens normally;
+  the user can use the shortcut manually.
 - It owns the pane it runs in. `--window` gives it its own, which is why that
   is the agent's path.
 - Backgrounding it (`terminal(background=True)`) is not a substitute — the
