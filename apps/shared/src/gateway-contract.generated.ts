@@ -2125,6 +2125,7 @@ export interface PromptSubmitParams {
   queued?: boolean | null
   surface?: string | null
   voice_context?: string | null
+  client_turn_id?: string | null
   truncate_before_user_ordinal?: number | null
   truncate_before_row_id?: number | null
   truncate_before_message_id?: string | null
@@ -2135,6 +2136,7 @@ export interface PromptSubmitParams {
 /** ``status`` is absent only on the typed-stop-phrase reply (``voice_stopped``). After a truncation the survivor row ids let the client rebind its cached ``rowId``s (``None`` map entries: drop the cached id). ``turn_isolation`` marks a compute-host dispatch. */
 export interface PromptSubmitResult {
   status?: PromptSubmitStatus | null
+  client_turn_id?: string | null
   voice_stopped?: boolean | null
   survivor_user_row_ids?: (number | null)[] | null
   survivor_row_id_map?: Record<string, number | null> | null
@@ -3867,6 +3869,7 @@ export interface MessageInterimPayload {
 /** ``prompt_turn._complete_turn_payload`` / ``session_auto_continue._emit_terminal_turn_error`` / ``agent_callbacks._mirror_subagent_to_child`` (child watch mirror: ``text`` only) / ``compute_host_bridge`` (``text`` + ``status``). */
 export interface MessageCompletePayload {
   text?: string | unknown
+  client_turn_id?: string | null
   usage?: Usage | null
   status?: TurnStatus | null
   reasoning?: string | null

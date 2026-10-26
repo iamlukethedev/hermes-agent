@@ -528,6 +528,8 @@ def _lock_in_submit_turn(
     cut, mark the turn running + in flight.  Returns ``(err, survivor_fields)``."""
     fields = {}
     with session["history_lock"]:
+        if params.get("client_turn_id") and (session.get("running") or session.get("queued_prompt")):
+            return _err(rid, 4091, "correlated turn requires an idle session"), fields
         # A watch session's run lives in the PARENT turn (own running flag False); typing
         # mid-run would build a second agent racing the child on the same stored session.
         if session.get("lazy") and _child_run_active(str(session.get("session_key") or "")):
@@ -548,6 +550,8 @@ def _lock_in_submit_turn(
         if hosted_task is not None:
             session["_hosted_room_task"] = dict(hosted_task)
         _start_inflight_turn(session, text)
+        if params.get("client_turn_id"):
+            session["inflight_turn"]["client_turn_id"] = params["client_turn_id"]
     return None, fields
 
 
@@ -593,6 +597,12 @@ def _(rid, params: dict) -> dict:
         # leaves the session untouched.  The reason travels as machine-readable data.
         reason = getattr(limit_message, "reason", None)
         return _err(rid, 4090, str(limit_message), {"reason": reason} if reason else None)
+    if params.get("client_turn_id"):
+        # Opt-in correlated consumers cannot attach to an existing turn or queue.
+        # Refuse before mutating the live turn's surface/context. Recheck at claim.
+        with session["history_lock"]:
+            if session.get("running") or session.get("queued_prompt"):
+                return _err(rid, 4091, "correlated turn requires an idle session")
     # Rewritten every submit: a session alternates app window / HUD / live voice; a stale value misinforms.
     session["client_surface"] = params.get("surface") if params.get("surface") in _CLIENT_SURFACES else ""
     # Live-voice delegations carry the recent spoken transcript for the MODEL INPUT only (the persisted
@@ -606,6 +616,8 @@ def _(rid, params: dict) -> dict:
         # `/work fix it` sends nine literal chars.
         text = _expand_skill_invocation_for_replay(text, str(session.get("session_key") or ""))
     turn_isolation = _session_uses_compute_host(session, _load_dashboard_process_isolation_config())
+    if params.get("client_turn_id") and turn_isolation:
+        return _err(rid, 4091, "correlated turns are unavailable with isolated compute workers")
     if internal_hosted_submit and turn_isolation:
         return _err(rid, 4121, "hosted room turns do not support isolated compute workers yet")
     # Re-bind to the current transport: streaming must stay on the active websocket even
@@ -627,6 +639,8 @@ def _(rid, params: dict) -> dict:
                 break
             if internal_hosted_submit:
                 return _err(rid, 4091, "hosted room member session is busy")
+            if params.get("client_turn_id"):
+                return _err(rid, 4091, "correlated turn requires an idle session")
             busy_transport = t or session.get("transport")
         busy_response = _handle_busy_submit(
             rid, sid, session, text, busy_transport, queued=bool(params.get("queued")), turn_author=turn_author)
@@ -673,7 +687,8 @@ def _(rid, params: dict) -> dict:
     # Handle lets session.interrupt tell a live turn from a stuck `running` flag.
     session["_run_thread"] = run_thread
     run_thread.start()
-    return _ok(rid, {"status": "streaming", **survivor_fields})
+    return _ok(rid, {"status": "streaming", **survivor_fields,
+                     **({"client_turn_id": params["client_turn_id"]} if params.get("client_turn_id") else {})})
 
 
 # ── attachments ─────────────────────────────────────────────────────────────

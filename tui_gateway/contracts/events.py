@@ -171,6 +171,7 @@ class MessageCompletePayload(Payload):
     ``compute_host_bridge`` (``text`` + ``status``)."""
 
     text: str | JsonValue = ""
+    client_turn_id: str | None = None  # optional prompt.submit receipt, never a session identifier
     usage: Usage | None = None
     status: TurnStatus | None = None
     reasoning: str | None = None

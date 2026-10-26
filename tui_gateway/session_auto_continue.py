@@ -364,7 +364,8 @@ def _inflight_snapshot(session: dict) -> dict | None:
 
 
 def _emit_terminal_turn_error(
-    sid: str, session: dict, error: Any, error_surface: Optional[dict] = None, *, retire_marker: bool = True) -> None:
+    sid: str, session: dict, error: Any, error_surface: Optional[dict] = None, *, retire_marker: bool = True,
+    client_turn_id: str | None = None) -> None:
     """Close a failed turn with the same ``status: "error"`` ``message.complete`` frame as the returned-error path,
     retaining the turn so a client that missed the frame recovers it from ``session.resume``'s ``inflight``.
     ``error_surface`` ({layer, code, retryable}) is classified from an exception if absent."""
@@ -386,6 +387,9 @@ def _emit_terminal_turn_error(
     payload = {"text": text, "usage": _get_usage(agent) if agent is not None else {}, "status": "error",
                "error": message, "recoverable": True, **({"error_surface": error_surface} if error_surface else {}),
                **({"partial": True} if partial else {}), **({"rendered": rendered} if rendered else {})}
+    correlation_id = turn.get("client_turn_id") if client_turn_id is None else client_turn_id
+    if correlation_id:
+        payload["client_turn_id"] = correlation_id
     if retire_marker:
         _retire_turn_marker(session)
     _emit("message.complete", sid, payload)

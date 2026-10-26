@@ -1,0 +1,2 @@
+# Rebuild from source with: node web/grok-voice/build.mjs
+dist/

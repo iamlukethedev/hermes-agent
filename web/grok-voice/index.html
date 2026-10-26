@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#101815" />
+    <meta name="referrer" content="same-origin" />
+    <title>Hermes · Voix</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        background: #101815;
+        color: #edf5ef;
+        font-synthesis: none;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        background: radial-gradient(ellipse at top, #243e30 0, transparent 65%);
+      }
+      main {
+        width: min(100%, 480px);
+        margin: auto;
+        padding: max(28px, env(safe-area-inset-top)) 24px max(28px, env(safe-area-inset-bottom));
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+      }
+      .brand {
+        font-weight: 750;
+        letter-spacing: 0.12em;
+        font-size: 0.8rem;
+      }
+      a {
+        color: #bad9c4;
+        text-underline-offset: 4px;
+        font-size: 0.88rem;
+      }
+      .eyebrow {
+        color: #a3c1ad;
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      h1 {
+        font-size: 2.5rem;
+        line-height: 1.1;
+        font-weight: 550;
+        margin: 10px 0 16px;
+      }
+      .intro {
+        line-height: 1.6;
+        color: #bfcec3;
+        margin-bottom: 30px;
+      }
+      .orb {
+        width: 120px;
+        height: 120px;
+        margin: 26px auto;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #d3efd7, #72a88b 45%, #294b36);
+        box-shadow: 0 0 65px #85bb8a20;
+        display: grid;
+        place-items: center;
+        color: #163824;
+        font-size: 2.5rem;
+      }
+      .orb[data-state='live'] {
+        box-shadow: 0 0 65px #85bb8a60;
+      }
+      .orb[data-state='connecting'] {
+        opacity: 0.6;
+      }
+      label {
+        display: block;
+        font-size: 0.85rem;
+        margin: 24px 0 9px;
+        color: #b9c9bd;
+      }
+      select,
+      button {
+        font: inherit;
+        border-radius: 14px;
+        min-height: 52px;
+      }
+      select {
+        width: 100%;
+        padding: 12px;
+        background: #19251e;
+        border: 1px solid #425347;
+        color: #edf5ef;
+      }
+      button {
+        cursor: pointer;
+        border: 0;
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
+      }
+      .primary {
+        width: 100%;
+        background: #c1e4cb;
+        color: #14261a;
+        font-weight: 650;
+        min-height: 64px;
+        font-size: 1.05rem;
+        margin-top: 20px;
+      }
+      .hangup {
+        width: 100%;
+        background: #60372f;
+        color: #fff0eb;
+        min-height: 64px;
+        font-size: 1.05rem;
+        margin-top: 20px;
+      }
+      .secondary {
+        background: transparent;
+        color: #c1d7c6;
+        border: 1px solid #425347;
+        padding: 10px 14px;
+        margin-top: 12px;
+        width: 100%;
+        font-size: 0.9rem;
+      }
+      #status {
+        text-align: center;
+        min-height: 1.5em;
+        color: #c5ddcc;
+        margin-top: 20px;
+      }
+      #notice {
+        white-space: pre-wrap;
+        line-height: 1.5;
+        color: #f0d3a2;
+        font-size: 0.92rem;
+      }
+      #model {
+        font-size: 0.8rem;
+        color: #a5b8aa;
+        overflow-wrap: anywhere;
+      }
+      footer {
+        border-top: 1px solid #344438;
+        margin-top: 28px;
+        padding-top: 16px;
+        font-size: 0.8rem;
+        line-height: 1.6;
+        color: #9fb0a4;
+      }
+      footer p {
+        margin: 7px 0;
+      }
+      :focus-visible {
+        outline: 3px solid #f2dca2;
+        outline-offset: 4px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="grok-voice">
+      <header><span class="brand">HERMES / VOIX</span><a href="/login?next=%2Fgrok-voice%2F">Connexion ↗</a></header>
+      <p class="eyebrow">Grok Voice · Eve · OAuth</p>
+      <h1>Parlez à Hermes.</h1>
+      <p class="intro">
+        Une voix naturelle, vos conversations et les outils de votre agent. Le modèle de votre agent Hermes ne change
+        pas.
+      </p>
+      <div class="orb" id="orb" aria-hidden="true">⌁</div>
+      <p id="status" role="status" aria-live="polite">Préparation de votre conversation…</p>
+      <label for="session">Conversation Hermes · profil default</label>
+      <select id="session" disabled>
+        <option value="">Chargement…</option>
+      </select>
+      <p id="model">Modèle Hermes : inchangé</p>
+      <button id="start" class="primary" disabled>Démarrer l’appel</button>
+      <button id="hangup" class="hangup" hidden>Raccrocher</button>
+      <button id="new-session" class="secondary" disabled>Nouvelle conversation vocale</button>
+      <button id="retry" class="secondary" hidden>Reconnecter Hermes</button>
+      <p id="notice" role="status" aria-live="polite"></p>
+      <noscript>Activez JavaScript pour utiliser Grok Voice.</noscript>
+      <footer>
+        <p>Le microphone s’active uniquement après votre clic. Votre audio est transmis à xAI pendant l’appel.</p>
+        <p>
+          Raccrocher coupe le microphone et la voix, sans interrompre une tâche Hermes déjà lancée.
+          Les confirmations et questions de l’agent restent à traiter dans votre conversation Hermes, depuis Herald ou Desktop.
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="/api/audio/grok-live/client.js"></script>
+  </body>
+</html>

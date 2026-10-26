@@ -472,6 +472,7 @@ class _TurnRun:
     prompt_text: str = ""
     marker_key: str = ""
     receipt_attempted: bool = False
+    client_turn_id: str = ""
 
 
 def _prepare_turn_input(sid: str, session: dict, st: _TurnRun, text: Any, images: list[str]):
@@ -707,6 +708,8 @@ def _complete_turn_payload(session: dict, st: _TurnRun, status_note: str | None,
         payload["rendered"] = rendered
     error_value = result.get("error")
     with session["history_lock"]:
+        if client_turn_id := getattr(st, "client_turn_id", ""):
+            payload["client_turn_id"] = client_turn_id
         if status == "error":
             # Retain the failed turn: resume's inflight payload is the only carrier of the
             # failure if this frame is lost to a disconnect.
@@ -755,7 +758,8 @@ def _recover_turn_exception(sid: str, session: dict, st: _TurnRun, e: BaseExcept
             logger.exception("hosted room terminal receipt commit failed")
     try:
         # Same terminal error frame shape as the returned-error path.
-        _emit_terminal_turn_error(sid, session, e, retire_marker=st.receipt_committed)
+        _emit_terminal_turn_error(sid, session, e, retire_marker=st.receipt_committed,
+                                  client_turn_id=st.client_turn_id)
         st.error_retained = True
         st.error_detail = _turn_failure_detail(e, type(e).__name__, st.prompt_text)
     except Exception as emit_exc:
@@ -856,6 +860,7 @@ def _run_prompt_submit(
     if admitted is None:
         return False
     images, agent = admitted
+    client_turn_id = str((session.get("inflight_turn") or {}).get("client_turn_id") or "")
     # The ONE INFO record proving a prompt was accepted by THIS process; ties ui sid,
     # session_key and the agent's live session_id together.  No prompt content is logged.
     _turn_started_monotonic = time.monotonic()
@@ -879,7 +884,7 @@ def _run_prompt_submit(
         runtime_session_token = _current_runtime_session_record.set(session)
         st = _TurnRun(
             session["agent"], session.pop("one_turn_model_restore", None), terminal_callback,
-            receipt_committed=terminal_callback is None)
+            receipt_committed=terminal_callback is None, client_turn_id=client_turn_id)
         st.marker_key = _record_turn_marker(session, text, auto_continue=terminal_callback is None)
         goal_followup = None
         try:

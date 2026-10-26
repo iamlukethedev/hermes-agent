@@ -14714,6 +14714,18 @@
             "default": "",
             "title": "Text"
           },
+          "client_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Client Turn Id"
+          },
           "usage": {
             "anyOf": [
               {
@@ -21799,6 +21811,21 @@
             "default": null,
             "title": "Voice Context"
           },
+          "client_turn_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._~-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Client Turn Id"
+          },
           "truncate_before_user_ordinal": {
             "anyOf": [
               {
@@ -21895,6 +21922,18 @@
               }
             ],
             "default": null
+          },
+          "client_turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Client Turn Id"
           },
           "voice_stopped": {
             "anyOf": [

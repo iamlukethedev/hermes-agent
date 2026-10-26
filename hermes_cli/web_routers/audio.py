@@ -197,6 +197,69 @@ async def create_voice_live_session(payload: VoiceLiveSessionRequest, profile: O
     return {"ok": True, **result}
 
 
+def _grok_frontend_root():
+    from pathlib import Path
+
+    return Path(__file__).resolve().parents[2] / "web" / "grok-voice"
+
+
+@router.get("/grok-voice/")
+async def grok_voice_page():
+    """Reference browser surface behind the existing dashboard auth gate."""
+    from fastapi.responses import HTMLResponse
+    from hermes_cli.web_server import app, _SESSION_TOKEN
+
+    root = _grok_frontend_root()
+    if not (root / "index.html").is_file() or not (root / "dist" / "client.js").is_file():
+        raise HTTPException(status_code=503, detail="Build the Grok Voice reference client first.")
+    html = (root / "index.html").read_text(encoding="utf-8")
+    gated = bool(getattr(app.state, "auth_required", False))
+    bootstrap = f"window.__HERMES_AUTH_REQUIRED__={json.dumps(gated)};"
+    if not gated:
+        # Match the loopback dashboard bootstrap. Never inject the process
+        # token into an auth-gated response; those clients use cookies/tickets.
+        bootstrap += f"window.__HERMES_SESSION_TOKEN__={json.dumps(_SESSION_TOKEN)};"
+    html = html.replace("</head>", f"<script>{bootstrap}</script></head>", 1)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/api/audio/grok-live/client.js")
+async def grok_voice_client():
+    from fastapi.responses import FileResponse
+
+    path = _grok_frontend_root() / "dist" / "client.js"
+    if not path.is_file():
+        raise HTTPException(status_code=503, detail="Build the Grok Voice reference client first.")
+    return FileResponse(path, media_type="application/javascript", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/api/audio/grok-live/status")
+async def get_grok_live_status(profile: Optional[str] = None):
+    """OAuth readiness only; never refresh or return the subscription grant."""
+    from fastapi.responses import JSONResponse
+    from tools.voice_xai_live import resolve_grok_live_status
+
+    result = await _run_config_scoped(profile, resolve_grok_live_status)
+    return JSONResponse({"ok": True, **result}, headers={"Cache-Control": "no-store"})
+
+
+@router.post("/api/audio/grok-live/session")
+async def create_grok_live_session(profile: Optional[str] = None):
+    """Mint a short-lived client credential. Subscription OAuth stays on-host."""
+    from fastapi.responses import JSONResponse
+    from tools.voice_xai_live import GrokVoiceError, create_grok_live_session as mint
+
+    # Minting consumes provider resources; require an explicit owner instead
+    # of silently using the launch profile of a multiplexed backend.
+    if not profile or not profile.strip() or profile.strip().lower() == "current":
+        raise HTTPException(status_code=400, detail="An explicit profile is required.")
+    try:
+        result = await _run_config_scoped(profile, mint)
+    except GrokVoiceError as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from None
+    return JSONResponse({"ok": True, **result}, headers={"Cache-Control": "no-store"})
+
+
 def _elevenlabs_voice_label(voice: Dict[str, Any]) -> str:
     name = str(voice.get("name") or voice.get("voice_id") or "Voice").strip()
     category = str(voice.get("category") or "").strip()

@@ -35,6 +35,7 @@ class PromptSubmitParams(SessionParams):
     queued: bool | None = None  # client queue drain — the busy path must hold it, never redirect/steer
     surface: str | None = None  # a ClientSurface value; unknown values clear the surface
     voice_context: str | None = None  # recent spoken transcript, model input only (voice-live)
+    client_turn_id: str | None = Field(default=None, min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._~-]+$")
     truncate_before_user_ordinal: int | None = None
     truncate_before_row_id: int | None = None
     truncate_before_message_id: str | None = None
@@ -62,6 +63,7 @@ class PromptSubmitResult(Result):
     entries: drop the cached id). ``turn_isolation`` marks a compute-host dispatch."""
 
     status: PromptSubmitStatus | None = None
+    client_turn_id: str | None = None  # echoed only for accepted, idle-only correlated turns
     voice_stopped: bool | None = None
     survivor_user_row_ids: list[int | None] | None = None
     survivor_row_id_map: dict[str, int | None] | None = None
